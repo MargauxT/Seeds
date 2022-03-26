@@ -53,7 +53,8 @@ gibbsSeeds <- function(nchain, prop_sd){
   chain <- matrix(NA, nchain+1, 5+I)
   chain[1,] <- c(alpha0, alpha1, alpha2, alpha12, tau, b)
   
-  prop_b <- rep(NA, I)
+  #prop_b <- rep(NA, I)
+  prop_b <- 0
   
   for (i in 1:nchain){
     
@@ -61,8 +62,15 @@ gibbsSeeds <- function(nchain, prop_sd){
     prop_a0 <- rnorm(1, alpha0, prop_sd[1])
     prop_p <- inv.logit(prop_a0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b)
     
-    top <- -prop_a0**2 / 2*10**6 + sum(log(prop_p**r * (1-prop_p)**(n-r)))
-    bottom <- -alpha0**2 / 2*10**6 + sum(log(p**r * (1-p)**(n-r)))
+    prop_linear <- prop_a0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b
+    prop_p <- exp(prop_linear) / (1 + exp(prop_linear))
+    
+    top <- -0.5 * prop_a0^2 / 10^6 + sum(r * prop_linear) + sum(n * log1p(-prop_p))
+    
+    linear <- alpha0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b
+    p <- exp(linear) / (1 + exp(linear))
+    
+    bottom <- -0.5 * alpha0^2 / 10^6 + sum(r * linear) + sum(n * log1p(-p))
     
     acc_prob <- exp(top - bottom)
     
@@ -73,10 +81,15 @@ gibbsSeeds <- function(nchain, prop_sd){
     
     #Mise à jour de alpha1
     prop_a1 <- rnorm(1, alpha1, prop_sd[1])
-    prop_p <- inv.logit(alpha0 + prop_a1*x1 + alpha2*x2 + alpha12*x1*x2 + b)
+    prop_linear <- alpha0 + prop_a1*x1 + alpha2*x2 + alpha12*x1*x2 + b
+    prop_p <- exp(prop_linear) / (1 + exp(prop_linear))
     
-    top <- -prop_a1**2 / 2*10**6 + sum(log(prop_p**r * (1-prop_p)**(n-r)))
-    bottom <- -alpha1**2 / 2*10**6 + sum(log(p**r * (1-p)**(n-r)))
+    top <- -0.5 * prop_a1^2 / 10^6 + sum(r * prop_linear) + sum(n * log1p(-prop_p))
+    
+    linear <- alpha0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b
+    p <- exp(linear) / (1 + exp(linear))
+    
+    bottom <- -0.5 * alpha1^2 / 10^6 + sum(r * linear) + sum(n * log1p(-p))
     
     acc_prob <- exp(top - bottom)
     
@@ -87,10 +100,16 @@ gibbsSeeds <- function(nchain, prop_sd){
     
     #Mise à jour de alpha2
     prop_a2 <- rnorm(1, alpha2, prop_sd[1])
-    prop_p <- inv.logit(alpha0 + alpha1*x1 + prop_a2*x2 + alpha12*x1*x2 + b)
     
-    top <- -prop_a2**2 / 2*10**6 + sum(log(prop_p**r * (1-prop_p)**(n-r)))
-    bottom <- -alpha2**2 / 2*10**6 + sum(log(p**r * (1-p)**(n-r)))
+    prop_linear <- alpha0 + alpha1*x1 + prop_a2*x2 + alpha12*x1*x2 + b
+    prop_p <- exp(prop_linear) / (1 + exp(prop_linear))
+    
+    top <- -0.5 * prop_a2^2 / 10^6 + sum(r * prop_linear) + sum(n * log1p(-prop_p))
+    
+    linear <- alpha0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b
+    p <- exp(linear) / (1 + exp(linear))
+    
+    bottom <- -0.5 * alpha2^2 / 10^6 + sum(r * linear) + sum(n * log1p(-p))
     
     acc_prob <- exp(top - bottom)
     
@@ -101,11 +120,17 @@ gibbsSeeds <- function(nchain, prop_sd){
     
     #Mise à jour de alpha12
     prop_a12 <- rnorm(1, alpha12, prop_sd[1])
-    prop_p <- inv.logit(alpha0 + alpha1*x1 + alpha2*x2 + prop_a12*x1*x2 + b)
     
-    top <- -prop_a12**2 / 2*10**6 + sum(log(prop_p**r * (1-prop_p)**(n-r)))
-    bottom <- -alpha12**2 / 2*10**6 + sum(log(p**r * (1-p)**(n-r)))
+    prop_linear <- alpha0 + alpha1*x1 + alpha2*x2 + prop_a12*x1*x2 + b
+    prop_p <- exp(prop_linear) / (1 + exp(prop_linear))
     
+    top <- -0.5 * prop_a12^2 / 10^6 + sum(r * prop_linear) + sum(n * log1p(-prop_p))
+    
+    linear <- alpha0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b
+    p <- exp(linear) / (1 + exp(linear))
+    
+    bottom <- -0.5 * alpha12^2 / 10^6 + sum(r * linear) + sum(n * log1p(-p))
+
     acc_prob <- exp(top - bottom)
     
     if (runif(1) < acc_prob){
@@ -115,38 +140,49 @@ gibbsSeeds <- function(nchain, prop_sd){
     
     #Mise à jour de tau
     
-    tau <- rgamma(n=1, shape=0.001+I/2, rate = 0.001+sum(b**2)/2)
+    tau <- rgamma(n=1, shape=0.001 + I/2, rate = 0.001 + sum(b**2)/2)
     
     #Mise à jour des b_i
     
     for(j in 1:I){
-      prop_b[j] <- rnorm(1, b[j], prop_sd[2])
-    }
-    top <- (-tau/2)*(prop_b**2) + sum(log(p**r * (1-p)**(n-r)))
-    bottom <- (-tau/2)*(b**2) + sum(log(p**r * (1-p)**(n-r)))
-    acc_prob <- exp(top - bottom)
-    
-    for(j in 1:I){
-      if(runif(1) < acc_prob[j]){
-        b[j] <- prop_b[j]
+      prop_b <- rnorm(1, b[j], prop_sd[2])
+      prop_p <- inv.logit(alpha0 + alpha1*x1[j] + alpha2*x2[j] + alpha12*x1[j]*x2[j] + prop_b)
+      top <- (-tau/2)*(prop_b**2) + r[j]*log(prop_p) + (n[j]-r[j])*log(1-prop_p)
+      bottom <- (-tau/2)*(b[j]**2) + r[j]*log(p[j]) + (n[j]-r[j])*log(1-p[j])
+      acc_prob <- exp(top - bottom)
+
+      if(runif(1) < acc_prob){
+        b[j] <- prop_b
+        p[j] <- prop_p
       }
     }
-    p <- inv.logit(alpha0 + alpha1*x1 + alpha2*x2 + alpha12*x1*x2 + b)
     
     #Mise à jour de ma chaîne
     chain[i+1,] <- c(alpha0, alpha1, alpha2, alpha12, tau, b)
     
   }
+  colnames(chain) <- c("alpha0","alpha1", "alpha2", "alpha12", "tau", "b1","b2",
+                       "b3","b4","b5","b6","b7","b8","b9","b10","b11","b12","b13","b14",
+                       "b15","b16","b17","b18","b19","b20","b21")
   return(chain)
 }
 ```
 
 ```{r}
-chain <- gibbsSeeds(10000, prop_sd = c(0.001,1))
+chain <- gibbsSeeds(10000, prop_sd = c(1.5,1))
+
 plot(mcmc(chain))
 
 ```
 
+Estimation finale des paramètres :
 
+```{r}
+mean(chain[,"alpha0"])
+mean(chain[,"alpha1"])
+mean(chain[,"alpha2"])
+mean(chain[,"alpha12"])
+mean(chain[,"tau"])
+```
 
 
