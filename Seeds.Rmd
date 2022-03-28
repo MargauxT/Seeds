@@ -53,7 +53,6 @@ gibbsSeeds <- function(nchain, prop_sd){
   chain <- matrix(NA, nchain+1, 5+I)
   chain[1,] <- c(alpha0, alpha1, alpha2, alpha12, tau, b)
   
-  #prop_b <- rep(NA, I)
   prop_b <- 0
   
   for (i in 1:nchain){
@@ -169,6 +168,7 @@ gibbsSeeds <- function(nchain, prop_sd){
 ```
 
 ```{r}
+set.seed(123)
 chain <- gibbsSeeds(10000, prop_sd = c(1.5,1))
 
 plot(mcmc(chain))
@@ -178,11 +178,7 @@ plot(mcmc(chain))
 Estimation finale des paramètres :
 
 ```{r}
-mean(chain[,"alpha0"])
-mean(chain[,"alpha1"])
-mean(chain[,"alpha2"])
-mean(chain[,"alpha12"])
-mean(chain[,"tau"])
+summary(mcmc(chain))
 ```
 
 
