@@ -43,7 +43,6 @@ b <- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ```
 
 
-
 ```{r}
 gibbsSeeds <- function(nchain, prop_sd){
   
